@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Fuyou PWA</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1976d2">
+
+<style>
+body{font-family:Arial;background:#f2f2f2;padding:15px}
+.box{background:#fff;padding:15px;border-radius:10px;max-width:1200px;margin:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{border:1px solid #ccc;padding:4px;text-align:center}
+input{width:85px}
+button{padding:6px;margin:4px}
+.safe{color:green;font-weight:bold}
+.out{color:red;font-weight:bold}
+</style>
+</head>
+
+<body>
+<div class="box">
+<h2>扶養 Income PWA</h2>
+
+<button onclick="addOffice()">➕ Office</button>
+<button onclick="exportExcel()">📤 Export</button>
+
+<table id="table"></table>
+<div id="result"></div>
+</div>
+
+<script>
+if("serviceWorker"in navigator){
+  navigator.serviceWorker.register("sw.js");
+}
+
+const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+let offices=2;
+
+function build(){
+let h="<tr><th>Month</th>";
+for(let o=1;o<=offices;o++) h+=`<th>Office ${o} Salary</th><th>Transport</th>`;
+h+="<th>Total</th></tr>";
+
+let b="";
+months.forEach((m,i)=>{
+  b+=`<tr><td>${m}</td>`;
+  let sub=0;
+  for(let o=1;o<=offices;o++){
+    b+=`<td><input type=number data-s="${i}-${o}"></td>
+        <td><input type=number data-t="${i}-${o}"></td>`;
+  }
+  b+=`<td id="sub${i}">0</td></tr>`;
+});
+table.innerHTML=h+b;
+load();
+}
+
+function calc(){
+let ts=0,tt=0;
+months.forEach((m,i)=>{
+ let sub=0;
+ for(let o=1;o<=offices;o++){
+  let s=+document.querySelector(`[data-s="${i}-${o}"]`)?.value||0;
+  let t=+document.querySelector(`[data-t="${i}-${o}"]`)?.value||0;
+  ts+=s;tt+=t;sub+=s+t;
+ }
+ document.getElementById("sub"+i).innerText=sub;
+});
+let total=ts+tt;
+let rtax=Math.max(0,ts-550000-430000)*0.1;
+result.innerHTML=`
+<b>Total Salary:</b> ¥${ts}<br>
+<b>Total Transport:</b> ¥${tt}<br>
+<b>Total Income:</b> ¥${total}<br>
+<b>Resident Tax:</b> ¥${Math.round(rtax)}<br>
+<b>扶養:</b> <span class="${total<=1280000?'safe':'out'}">
+${total<=1280000?'SAFE':'OUT'}
+</span>`;
+save();
+}
+
+function save(){
+let d={};
+document.querySelectorAll("input").forEach(i=>d[i.dataset.s||i.dataset.t]=i.value);
+localStorage.setItem("d",JSON.stringify(d));
+}
+function load(){
+let d=JSON.parse(localStorage.getItem("d"))||{};
+document.querySelectorAll("input").forEach(i=>{
+ let k=i.dataset.s||i.dataset.t;
+ if(d[k])i.value=d[k];
+});
+calc();
+}
+
+function addOffice(){offices++;build();}
+function exportExcel(){
+let csv="Month\n";
+months.forEach(m=>csv+=m+"\n");
+let a=document.createElement("a");
+a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+a.download="fuyou.csv";a.click();
+}
+
+document.addEventListener("input",calc);
+build();
+</script>
+</body>
+</html>
