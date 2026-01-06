@@ -1,111 +1,239 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Fuyou PWA</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1976d2">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>扶養 Income Manager</title>
 
-<style>
-body{font-family:Arial;background:#f2f2f2;padding:15px}
-.box{background:#fff;padding:15px;border-radius:10px;max-width:1200px;margin:auto}
-table{width:100%;border-collapse:collapse;font-size:12px}
-th,td{border:1px solid #ccc;padding:4px;text-align:center}
-input{width:85px}
-button{padding:6px;margin:4px}
-.safe{color:green;font-weight:bold}
-.out{color:red;font-weight:bold}
-</style>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#2563eb" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
+  <style>
+    :root {
+      --primary: #2563eb;
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --safe: #16a34a;
+      --warn: #dc2626;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 1.2rem;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.3rem;
+    }
+
+    .container {
+      padding: 1rem;
+      max-width: 900px;
+      margin: auto;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+
+    .card h3 {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .card p {
+      margin: 0.4rem 0 0;
+      font-size: 1.3rem;
+      font-weight: bold;
+    }
+
+    .status-safe {
+      color: var(--safe);
+      font-weight: bold;
+    }
+
+    .status-warn {
+      color: var(--warn);
+      font-weight: bold;
+    }
+
+    .month-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+
+    .month-card h4 {
+      margin: 0 0 0.5rem;
+    }
+
+    .field {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.4rem;
+      font-size: 0.9rem;
+    }
+
+    .field input {
+      width: 100px;
+      padding: 0.3rem;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin: 2rem 0 1rem;
+    }
+
+    button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .actions {
+      margin: 1.5rem 0;
+      text-align: right;
+    }
+  </style>
 </head>
-
 <body>
-<div class="box">
-<h2>扶養 Income PWA</h2>
 
-<button onclick="addOffice()">➕ Office</button>
-<button onclick="exportExcel()">📤 Export</button>
+<header>
+  <h1>扶養 Income Manager</h1>
+  <small>Salary & Transport Tracker (PWA)</small>
+</header>
 
-<table id="table"></table>
-<div id="result"></div>
+<div class="container">
+
+  <!-- Dashboard -->
+  <div class="dashboard">
+    <div class="card">
+      <h3>Total Income</h3>
+      <p id="totalIncome">¥0</p>
+    </div>
+    <div class="card">
+      <h3>Total Transport</h3>
+      <p id="totalTransport">¥0</p>
+    </div>
+    <div class="card">
+      <h3>Resident Tax (Est.)</h3>
+      <p id="residentTax">¥0</p>
+    </div>
+    <div class="card">
+      <h3>扶養 Status</h3>
+      <p id="fuyouStatus" class="status-safe">SAFE</p>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button onclick="exportCSV()">📤 Export CSV</button>
+  </div>
+
+  <!-- Months -->
+  <div class="month-grid" id="months"></div>
+
 </div>
 
+<footer>
+  Offline-ready • Installable PWA • Local data only
+</footer>
+
 <script>
-if("serviceWorker"in navigator){
+const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const data = JSON.parse(localStorage.getItem("incomeData") || "{}");
+
+const container = document.getElementById("months");
+
+months.forEach(m => {
+  const d = data[m] || { o1:0, t1:0, o2:0, t2:0 };
+  const card = document.createElement("div");
+  card.className = "card month-card";
+  card.innerHTML = `
+    <h4>${m}</h4>
+    <div class="field">Office 1 ¥ <input type="number" value="${d.o1}" oninput="update('${m}','o1',this.value)"></div>
+    <div class="field">Transport ¥ <input type="number" value="${d.t1}" oninput="update('${m}','t1',this.value)"></div>
+    <div class="field">Office 2 ¥ <input type="number" value="${d.o2}" oninput="update('${m}','o2',this.value)"></div>
+    <div class="field">Transport ¥ <input type="number" value="${d.t2}" oninput="update('${m}','t2',this.value)"></div>
+  `;
+  container.appendChild(card);
+});
+
+function update(month, key, val) {
+  data[month] = data[month] || { o1:0, t1:0, o2:0, t2:0 };
+  data[month][key] = Number(val || 0);
+  localStorage.setItem("incomeData", JSON.stringify(data));
+  calculate();
+}
+
+function calculate() {
+  let income = 0, transport = 0;
+  Object.values(data).forEach(d => {
+    income += d.o1 + d.o2;
+    transport += d.t1 + d.t2;
+  });
+
+  document.getElementById("totalIncome").textContent = "¥" + income;
+  document.getElementById("totalTransport").textContent = "¥" + transport;
+
+  const tax = Math.round(income * 0.1);
+  document.getElementById("residentTax").textContent = "¥" + tax;
+
+  const status = income > 1300000 ? "WARNING" : "SAFE";
+  const el = document.getElementById("fuyouStatus");
+  el.textContent = status;
+  el.className = status === "SAFE" ? "status-safe" : "status-warn";
+}
+
+function exportCSV() {
+  let csv = "Month,Office1,Transport1,Office2,Transport2\n";
+  months.forEach(m => {
+    const d = data[m] || {};
+    csv += `${m},${d.o1||0},${d.t1||0},${d.o2||0},${d.t2||0}\n`;
+  });
+  const blob = new Blob([csv], {type:"text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "income.csv";
+  a.click();
+}
+
+calculate();
+
+if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js");
 }
-
-const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-let offices=2;
-
-function build(){
-let h="<tr><th>Month</th>";
-for(let o=1;o<=offices;o++) h+=`<th>Office ${o} Salary</th><th>Transport</th>`;
-h+="<th>Total</th></tr>";
-
-let b="";
-months.forEach((m,i)=>{
-  b+=`<tr><td>${m}</td>`;
-  let sub=0;
-  for(let o=1;o<=offices;o++){
-    b+=`<td><input type=number data-s="${i}-${o}"></td>
-        <td><input type=number data-t="${i}-${o}"></td>`;
-  }
-  b+=`<td id="sub${i}">0</td></tr>`;
-});
-table.innerHTML=h+b;
-load();
-}
-
-function calc(){
-let ts=0,tt=0;
-months.forEach((m,i)=>{
- let sub=0;
- for(let o=1;o<=offices;o++){
-  let s=+document.querySelector(`[data-s="${i}-${o}"]`)?.value||0;
-  let t=+document.querySelector(`[data-t="${i}-${o}"]`)?.value||0;
-  ts+=s;tt+=t;sub+=s+t;
- }
- document.getElementById("sub"+i).innerText=sub;
-});
-let total=ts+tt;
-let rtax=Math.max(0,ts-550000-430000)*0.1;
-result.innerHTML=`
-<b>Total Salary:</b> ¥${ts}<br>
-<b>Total Transport:</b> ¥${tt}<br>
-<b>Total Income:</b> ¥${total}<br>
-<b>Resident Tax:</b> ¥${Math.round(rtax)}<br>
-<b>扶養:</b> <span class="${total<=1280000?'safe':'out'}">
-${total<=1280000?'SAFE':'OUT'}
-</span>`;
-save();
-}
-
-function save(){
-let d={};
-document.querySelectorAll("input").forEach(i=>d[i.dataset.s||i.dataset.t]=i.value);
-localStorage.setItem("d",JSON.stringify(d));
-}
-function load(){
-let d=JSON.parse(localStorage.getItem("d"))||{};
-document.querySelectorAll("input").forEach(i=>{
- let k=i.dataset.s||i.dataset.t;
- if(d[k])i.value=d[k];
-});
-calc();
-}
-
-function addOffice(){offices++;build();}
-function exportExcel(){
-let csv="Month\n";
-months.forEach(m=>csv+=m+"\n");
-let a=document.createElement("a");
-a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
-a.download="fuyou.csv";a.click();
-}
-
-document.addEventListener("input",calc);
-build();
 </script>
+
 </body>
 </html>
