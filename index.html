@@ -8,10 +8,8 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2563eb">
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <style>
-:root {
+:root{
   --primary:#2563eb;
   --bg:#f4f6fb;
   --card:#fff;
@@ -20,27 +18,27 @@
   --danger:#dc2626;
 }
 
-body {
+body{
   margin:0;
   font-family:system-ui;
   background:var(--bg);
   color:var(--text);
 }
 
-header {
+header{
   background:var(--primary);
   color:#fff;
   padding:1rem;
   text-align:center;
 }
 
-.container {
+.container{
   max-width:1000px;
   margin:auto;
   padding:1rem;
 }
 
-.card {
+.card{
   background:var(--card);
   border-radius:12px;
   padding:1rem;
@@ -48,9 +46,9 @@ header {
   box-shadow:0 4px 10px rgba(0,0,0,.05);
 }
 
-h3 { margin-top:0 }
+h3{margin-top:0}
 
-button {
+button{
   background:var(--primary);
   color:#fff;
   border:none;
@@ -59,31 +57,29 @@ button {
   cursor:pointer;
 }
 
-button.danger {
-  background:var(--danger);
-}
+button.danger{background:var(--danger)}
 
-input {
+input{
   padding:.4rem;
   border-radius:6px;
   border:1px solid #ccc;
   width:90px;
 }
 
-.office-row {
+.office-row{
   display:flex;
   gap:.4rem;
   align-items:center;
   margin-bottom:.4rem;
 }
 
-.month-grid {
+.month-grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
   gap:1rem;
 }
 
-footer {
+footer{
   text-align:center;
   font-size:.8rem;
   color:var(--muted);
@@ -95,27 +91,21 @@ footer {
 <body>
 
 <header>
-<h2>扶養 Income Manager</h2>
-<small>Office • Salary • Transport • Report</small>
+  <h2>扶養 Income Manager</h2>
+  <small>Office • Salary • Transport</small>
 </header>
 
 <div class="container">
 
 <!-- OFFICE MANAGEMENT -->
 <div class="card">
-<h3>🏢 Offices</h3>
-<div id="officeList"></div>
-<button onclick="addOffice()">➕ Add Office</button>
+  <h3>🏢 Offices</h3>
+  <div id="officeList"></div>
+  <button onclick="addOffice()">➕ Add Office</button>
 </div>
 
 <!-- MONTHS -->
 <div class="month-grid" id="months"></div>
-
-<!-- REPORT -->
-<div class="card">
-<h3>📊 Report</h3>
-<canvas id="incomeChart"></canvas>
-</div>
 
 </div>
 
@@ -125,12 +115,15 @@ Offline PWA • Safari Ready • Local Data Only
 
 <script>
 const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-let data=JSON.parse(localStorage.getItem("fuyouData"))||{
+
+let data=JSON.parse(localStorage.getItem("fuyouData")) || {
   offices:["Office A"],
   records:{}
 };
 
-function save(){ localStorage.setItem("fuyouData",JSON.stringify(data)); }
+function save(){
+  localStorage.setItem("fuyouData",JSON.stringify(data));
+}
 
 function renderOffices(){
   const el=document.getElementById("officeList");
@@ -171,11 +164,13 @@ function renderMonths(){
     data.offices.forEach(o=>{
       const r=data.records[m][o]||{s:0,t:0};
       html+=`
-      <div class="office-row">
-        <strong>${o}</strong>
-        ¥<input type="number" value="${r.s}" oninput="update('${m}','${o}','s',this.value)">
-        🚃<input type="number" value="${r.t}" oninput="update('${m}','${o}','t',this.value)">
-      </div>`;
+        <div class="office-row">
+          <strong>${o}</strong>
+          ¥<input type="number" value="${r.s}" 
+            oninput="update('${m}','${o}','s',this.value)">
+          🚃<input type="number" value="${r.t}" 
+            oninput="update('${m}','${o}','t',this.value)">
+        </div>`;
     });
     card.innerHTML=html;
     box.appendChild(card);
@@ -185,34 +180,12 @@ function renderMonths(){
 function update(m,o,k,v){
   data.records[m][o]=data.records[m][o]||{s:0,t:0};
   data.records[m][o][k]=Number(v||0);
-  save(); drawChart();
-}
-
-let chart;
-function drawChart(){
-  const totals=months.map(m=>{
-    let sum=0;
-    Object.values(data.records[m]||{}).forEach(r=>sum+=r.s+r.t);
-    return sum;
-  });
-
-  if(chart) chart.destroy();
-  chart=new Chart(document.getElementById("incomeChart"),{
-    type:"bar",
-    data:{
-      labels:months,
-      datasets:[{
-        label:"Monthly Total Income (¥)",
-        data:totals
-      }]
-    }
-  });
+  save();
 }
 
 function render(){
   renderOffices();
   renderMonths();
-  drawChart();
 }
 
 render();
