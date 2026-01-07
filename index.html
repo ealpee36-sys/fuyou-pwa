@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>扶養 Income Manager</title>
 
-<link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#2563eb" />
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563eb">
 
 <style>
 :root{
@@ -16,30 +16,24 @@
   --text:#1f2937;
   --muted:#6b7280;
   --danger:#dc2626;
-  --safe:#16a34a;
-  --warn:#ca8a04;
 }
-
 body{
   margin:0;
   font-family:system-ui;
   background:var(--bg);
   color:var(--text);
 }
-
 header{
   background:var(--primary);
   color:#fff;
   padding:1rem;
   text-align:center;
 }
-
 .container{
   max-width:1000px;
   margin:auto;
   padding:1rem;
 }
-
 .card{
   background:var(--card);
   border-radius:12px;
@@ -47,9 +41,7 @@ header{
   margin-bottom:1rem;
   box-shadow:0 4px 10px rgba(0,0,0,.05);
 }
-
 h3{margin-top:0}
-
 button{
   background:var(--primary);
   color:#fff;
@@ -58,41 +50,34 @@ button{
   border-radius:6px;
   cursor:pointer;
 }
-
-button.danger{
-  background:var(--danger);
-}
-
+button.danger{background:var(--danger)}
 input{
   padding:.4rem;
   border-radius:6px;
   border:1px solid #ccc;
   width:90px;
 }
-
 .office-row{
   display:flex;
   gap:.4rem;
   align-items:center;
   margin-bottom:.4rem;
 }
-
 .month-grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
   gap:1rem;
 }
-
-.safe{color:var(--safe);}
-.warn{color:var(--warn);}
-.dangerText{color:var(--danger);}
-
+.safe{color:#16a34a;font-weight:bold}
+.warn{color:#ca8a04;font-weight:bold}
+.danger-text{color:#dc2626;font-weight:bold}
 footer{
   text-align:center;
   font-size:.8rem;
   color:var(--muted);
   margin:2rem 0;
 }
+.summary p{margin:.3rem 0}
 </style>
 </head>
 
@@ -100,19 +85,23 @@ footer{
 
 <header>
   <h2>扶養 Income Manager</h2>
-  <small>Office • Salary • Transport • 扶養 Check</small>
+  <small>Salary • Transport • Resident Tax • 扶養 Status</small>
 </header>
 
 <div class="container">
 
-<!-- 扶養 STATUS -->
-<div class="card">
-  <h3>扶養 Status</h3>
-  <div id="fuyouStatus" style="font-weight:bold;"></div>
+<!-- SUMMARY -->
+<div class="card summary">
+  <h3>📌 Summary</h3>
+  <p>Total Salary: ¥<span id="totalSalary">0</span></p>
+  <p>Total Transport: ¥<span id="totalTransport">0</span></p>
+  <p><strong>Total Income:</strong> ¥<span id="totalIncome">0</span></p>
+  <p>Resident Tax (目安): ¥<span id="residentTax">0</span></p>
+  <p id="fuyouStatus"></p>
   <small id="fuyouNote"></small>
 </div>
 
-<!-- OFFICE MANAGEMENT -->
+<!-- OFFICE -->
 <div class="card">
   <h3>🏢 Offices</h3>
   <div id="officeList"></div>
@@ -125,31 +114,30 @@ footer{
 </div>
 
 <footer>
-Offline PWA • Safari Ready • Local Data Only
+Offline PWA • Local data only
 </footer>
 
 <script>
 const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-let data = JSON.parse(localStorage.getItem("fuyouData")) || {
+let data=JSON.parse(localStorage.getItem("fuyouData"))||{
   offices:["Office A"],
   records:{}
 };
 
 function save(){
-  localStorage.setItem("fuyouData", JSON.stringify(data));
+  localStorage.setItem("fuyouData",JSON.stringify(data));
 }
 
-/* -------- Offices -------- */
 function renderOffices(){
   const el=document.getElementById("officeList");
   el.innerHTML="";
   data.offices.forEach((o,i)=>{
     el.innerHTML+=`
-      <div class="office-row">
-        <input value="${o}" onchange="renameOffice(${i},this.value)">
-        <button class="danger" onclick="deleteOffice(${i})">🗑️</button>
-      </div>`;
+    <div class="office-row">
+      <input value="${o}" onchange="renameOffice(${i},this.value)">
+      <button class="danger" onclick="deleteOffice(${i})">🗑️</button>
+    </div>`;
   });
 }
 
@@ -164,12 +152,11 @@ function renameOffice(i,val){
 }
 
 function deleteOffice(i){
-  if(!confirm("Delete office?")) return;
+  if(!confirm("Delete office?"))return;
   data.offices.splice(i,1);
   save(); render();
 }
 
-/* -------- Months -------- */
 function renderMonths(){
   const box=document.getElementById("months");
   box.innerHTML="";
@@ -181,66 +168,67 @@ function renderMonths(){
     data.offices.forEach(o=>{
       const r=data.records[m][o]||{s:0,t:0};
       html+=`
-        <div class="office-row">
-          <strong>${o}</strong>
-          ¥<input type="number" value="${r.s}" oninput="update('${m}','${o}','s',this.value)">
-          🚃<input type="number" value="${r.t}" oninput="update('${m}','${o}','t',this.value)">
-        </div>`;
+      <div class="office-row">
+        <strong>${o}</strong>
+        ¥<input type="number" value="${r.s}" oninput="update('${m}','${o}','s',this.value)">
+        🚃<input type="number" value="${r.t}" oninput="update('${m}','${o}','t',this.value)">
+      </div>`;
     });
     card.innerHTML=html;
     box.appendChild(card);
   });
 }
 
-/* -------- Data Update -------- */
 function update(m,o,k,v){
   data.records[m][o]=data.records[m][o]||{s:0,t:0};
   data.records[m][o][k]=Number(v||0);
   save();
-  updateFuyouStatus();
+  updateSummary();
 }
 
-/* -------- 扶養 Logic -------- */
-function calculateAnnual(){
-  let total=0;
+function updateSummary(){
+  let salary=0, transport=0;
   Object.values(data.records).forEach(month=>{
     Object.values(month).forEach(r=>{
-      total += (r.s||0)+(r.t||0);
+      salary+=r.s||0;
+      transport+=r.t||0;
     });
   });
-  return total;
-}
 
-function updateFuyouStatus(){
-  const total=calculateAnnual();
-  const el=document.getElementById("fuyouStatus");
+  const total=salary+transport;
+  const residentTax=Math.max(0,Math.round(total*0.1)); // approx 10%
+
+  document.getElementById("totalSalary").textContent=salary.toLocaleString();
+  document.getElementById("totalTransport").textContent=transport.toLocaleString();
+  document.getElementById("totalIncome").textContent=total.toLocaleString();
+  document.getElementById("residentTax").textContent=residentTax.toLocaleString();
+
+  const status=document.getElementById("fuyouStatus");
   const note=document.getElementById("fuyouNote");
 
   if(total<=1030000){
-    el.className="safe";
-    el.textContent="🟢 SAFE";
-    note.textContent="扶養内（年収 103万円以内）";
+    status.className="safe";
+    status.textContent="🟢 扶養 SAFE";
+    note.textContent="103万円以内";
   }else if(total<=1300000){
-    el.className="warn";
-    el.textContent="🟡 WARNING";
+    status.className="warn";
+    status.textContent="🟡 扶養 WARNING";
     note.textContent="税扶養から外れる可能性あり";
   }else{
-    el.className="dangerText";
-    el.textContent="🔴 DANGER";
+    status.className="danger-text";
+    status.textContent="🔴 扶養 DANGER";
     note.textContent="税・社会保険 扶養外";
   }
 }
 
-/* -------- Render -------- */
 function render(){
   renderOffices();
   renderMonths();
-  updateFuyouStatus();
+  updateSummary();
 }
 
 render();
 
-/* -------- Service Worker -------- */
 if("serviceWorker" in navigator){
   navigator.serviceWorker.register("sw.js");
 }
