@@ -1,12 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>扶養 Income Manager</title>
-
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#2563eb">
 
 <style>
 :root{
@@ -15,8 +12,8 @@
   --card:#fff;
   --text:#1f2937;
   --muted:#6b7280;
-  --safe:#16a34a;
   --danger:#dc2626;
+  --safe:#16a34a;
 }
 
 body{
@@ -49,6 +46,20 @@ header{
 
 h3{margin-top:0}
 
+.office-row{
+  display:flex;
+  gap:.4rem;
+  align-items:center;
+  margin-bottom:.4rem;
+}
+
+input{
+  padding:.4rem;
+  border-radius:6px;
+  border:1px solid #ccc;
+  width:90px;
+}
+
 button{
   background:var(--primary);
   color:#fff;
@@ -60,35 +71,14 @@ button{
 
 button.danger{background:var(--danger)}
 
-input{
-  padding:.4rem;
-  border-radius:6px;
-  border:1px solid #ccc;
-  width:90px;
-}
-
-.office-row{
-  display:flex;
-  gap:.4rem;
-  align-items:center;
-  margin-bottom:.4rem;
-}
-
 .month-grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
   gap:1rem;
 }
 
-.status{
-  font-weight:bold;
-  padding:.4rem .6rem;
-  border-radius:6px;
-  display:inline-block;
-}
-
-.safe{background:#dcfce7;color:var(--safe)}
-.danger-status{background:#fee2e2;color:var(--danger)}
+.status.safe{color:var(--safe);font-weight:bold}
+.status.danger{color:var(--danger);font-weight:bold}
 
 footer{
   text-align:center;
@@ -100,7 +90,6 @@ footer{
 </head>
 
 <body>
-
 <header>
   <h2>扶養 Income Manager</h2>
   <small>Salary • Transport • Resident Tax • 扶養 Status</small>
@@ -109,17 +98,7 @@ footer{
 <div class="container">
 
 <!-- SUMMARY -->
-<div class="card">
-  <h3>📌 Summary</h3>
-  <p>Total Salary: ¥<span id="totalSalary">0</span></p>
-  <p>Total Transport: ¥<span id="totalTransport">0</span></p>
-  <p><strong>Total Income: ¥<span id="totalIncome">0</span></strong></p>
-  <hr>
-  <p>Salary Income Deduction: ¥550,000</p>
-  <p>Resident Tax Basic Deduction: ¥430,000</p>
-  <p><strong>Resident Tax (目安): ¥<span id="residentTax">0</span></strong></p>
-  <p id="fuyouStatus" class="status"></p>
-</div>
+<div class="card" id="summary"></div>
 
 <!-- OFFICES -->
 <div class="card">
@@ -128,7 +107,7 @@ footer{
   <button onclick="addOffice()">➕ Add Office</button>
 </div>
 
-<!-- MONTH INPUT -->
+<!-- MONTHS -->
 <div class="month-grid" id="months"></div>
 
 </div>
@@ -154,10 +133,10 @@ function renderOffices(){
   el.innerHTML="";
   data.offices.forEach((o,i)=>{
     el.innerHTML+=`
-    <div class="office-row">
-      <input value="${o}" onchange="renameOffice(${i},this.value)">
-      <button class="danger" onclick="deleteOffice(${i})">🗑️</button>
-    </div>`;
+      <div class="office-row">
+        <input value="${o}" onchange="renameOffice(${i},this.value)">
+        <button class="danger" onclick="deleteOffice(${i})">🗑️</button>
+      </div>`;
   });
 }
 
@@ -166,8 +145,8 @@ function addOffice(){
   save(); render();
 }
 
-function renameOffice(i,val){
-  data.offices[i]=val;
+function renameOffice(i,v){
+  data.offices[i]=v;
   save(); render();
 }
 
@@ -182,11 +161,9 @@ function renderMonths(){
   box.innerHTML="";
   months.forEach(m=>{
     data.records[m]=data.records[m]||{};
-    const card=document.createElement("div");
-    card.className="card";
     let html=`<h3>${m}</h3>`;
     data.offices.forEach(o=>{
-      const r=data.records[m][o]||{s:0,t:0};
+      const r=data.records[m][o]||{s:"",t:""};
       html+=`
       <div class="office-row">
         <strong>${o}</strong>
@@ -194,52 +171,61 @@ function renderMonths(){
         🚃<input type="number" value="${r.t}" oninput="update('${m}','${o}','t',this.value)">
       </div>`;
     });
+    const card=document.createElement("div");
+    card.className="card";
     card.innerHTML=html;
     box.appendChild(card);
   });
 }
 
 function update(m,o,k,v){
-  data.records[m][o]=data.records[m][o]||{s:0,t:0};
-  data.records[m][o][k]=Number(v||0);
-  save(); calculate();
+  data.records[m][o]=data.records[m][o]||{s:"",t:""};
+  data.records[m][o][k]=v;
+  save(); renderSummary();
 }
 
-function calculate(){
-  let salary=0, transport=0;
+function renderSummary(){
+  let totalSalary=0;
+  let totalTransport=0;
 
   months.forEach(m=>{
     Object.values(data.records[m]||{}).forEach(r=>{
-      salary+=r.s;
-      transport+=r.t;
+      const s=Number(r.s);
+      const t=Number(r.t);
+      if(s>0) totalSalary+=s;        // ✅ only entered salary
+      if(t>0) totalTransport+=t;     // ✅ only entered transport
     });
   });
 
-  const totalIncome=salary+transport;
+  const salaryDeduction=550000;
+  const residentBasic=430000;
 
-  // Resident tax calculation (correct logic)
-  let taxable=Math.max(0, salary-550000-430000);
-  let residentTax=Math.round(taxable*0.10);
+  const salaryIncome=Math.max(0,totalSalary-salaryDeduction);
+  const taxable=Math.max(0,salaryIncome-residentBasic);
+  const residentTax=Math.round(taxable*0.10);
 
-  document.getElementById("totalSalary").textContent=salary.toLocaleString();
-  document.getElementById("totalTransport").textContent=transport.toLocaleString();
-  document.getElementById("totalIncome").textContent=totalIncome.toLocaleString();
-  document.getElementById("residentTax").textContent=residentTax.toLocaleString();
+  const fuyouStatus = totalSalary<=1030000
+    ? `<span class="status safe">🟢 扶養 SAFE（103万円以内）</span>`
+    : `<span class="status danger">🔴 扶養 DANGER（超過）</span>`;
 
-  const statusEl=document.getElementById("fuyouStatus");
-  if(salary<=1030000){
-    statusEl.textContent="🟢 扶養 SAFE（103万円以内）";
-    statusEl.className="status safe";
-  }else{
-    statusEl.textContent="🔴 扶養 DANGER（103万円超）";
-    statusEl.className="status danger-status";
-  }
+  document.getElementById("summary").innerHTML=`
+    <h3>📌 Summary</h3>
+    <p>Total Salary: ¥${totalSalary.toLocaleString()}</p>
+    <p>Total Transport: ¥${totalTransport.toLocaleString()}</p>
+    <p><strong>Total Income: ¥${(totalSalary+totalTransport).toLocaleString()}</strong></p>
+    <hr>
+    <p>Salary Income Deduction: ¥550,000</p>
+    <p>Resident Tax Basic Deduction: ¥430,000</p>
+    <p><strong>Resident Tax (目安): ¥${residentTax.toLocaleString()}</strong></p>
+    <hr>
+    ${fuyouStatus}
+  `;
 }
 
 function render(){
   renderOffices();
   renderMonths();
-  calculate();
+  renderSummary();
 }
 
 render();
@@ -248,6 +234,5 @@ if("serviceWorker" in navigator){
   navigator.serviceWorker.register("sw.js");
 }
 </script>
-
 </body>
 </html>
