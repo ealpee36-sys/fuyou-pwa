@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>扶養 Income Manager</title>
 
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#2563eb">
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#2563eb" />
 
 <style>
 :root{
@@ -16,6 +16,8 @@
   --text:#1f2937;
   --muted:#6b7280;
   --danger:#dc2626;
+  --safe:#16a34a;
+  --warn:#ca8a04;
 }
 
 body{
@@ -57,7 +59,9 @@ button{
   cursor:pointer;
 }
 
-button.danger{background:var(--danger)}
+button.danger{
+  background:var(--danger);
+}
 
 input{
   padding:.4rem;
@@ -79,6 +83,10 @@ input{
   gap:1rem;
 }
 
+.safe{color:var(--safe);}
+.warn{color:var(--warn);}
+.dangerText{color:var(--danger);}
+
 footer{
   text-align:center;
   font-size:.8rem;
@@ -92,10 +100,17 @@ footer{
 
 <header>
   <h2>扶養 Income Manager</h2>
-  <small>Office • Salary • Transport</small>
+  <small>Office • Salary • Transport • 扶養 Check</small>
 </header>
 
 <div class="container">
+
+<!-- 扶養 STATUS -->
+<div class="card">
+  <h3>扶養 Status</h3>
+  <div id="fuyouStatus" style="font-weight:bold;"></div>
+  <small id="fuyouNote"></small>
+</div>
 
 <!-- OFFICE MANAGEMENT -->
 <div class="card">
@@ -116,15 +131,16 @@ Offline PWA • Safari Ready • Local Data Only
 <script>
 const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-let data=JSON.parse(localStorage.getItem("fuyouData")) || {
+let data = JSON.parse(localStorage.getItem("fuyouData")) || {
   offices:["Office A"],
   records:{}
 };
 
 function save(){
-  localStorage.setItem("fuyouData",JSON.stringify(data));
+  localStorage.setItem("fuyouData", JSON.stringify(data));
 }
 
+/* -------- Offices -------- */
 function renderOffices(){
   const el=document.getElementById("officeList");
   el.innerHTML="";
@@ -148,11 +164,12 @@ function renameOffice(i,val){
 }
 
 function deleteOffice(i){
-  if(!confirm("Delete office?"))return;
+  if(!confirm("Delete office?")) return;
   data.offices.splice(i,1);
   save(); render();
 }
 
+/* -------- Months -------- */
 function renderMonths(){
   const box=document.getElementById("months");
   box.innerHTML="";
@@ -166,10 +183,8 @@ function renderMonths(){
       html+=`
         <div class="office-row">
           <strong>${o}</strong>
-          ¥<input type="number" value="${r.s}" 
-            oninput="update('${m}','${o}','s',this.value)">
-          🚃<input type="number" value="${r.t}" 
-            oninput="update('${m}','${o}','t',this.value)">
+          ¥<input type="number" value="${r.s}" oninput="update('${m}','${o}','s',this.value)">
+          🚃<input type="number" value="${r.t}" oninput="update('${m}','${o}','t',this.value)">
         </div>`;
     });
     card.innerHTML=html;
@@ -177,19 +192,55 @@ function renderMonths(){
   });
 }
 
+/* -------- Data Update -------- */
 function update(m,o,k,v){
   data.records[m][o]=data.records[m][o]||{s:0,t:0};
   data.records[m][o][k]=Number(v||0);
   save();
+  updateFuyouStatus();
 }
 
+/* -------- 扶養 Logic -------- */
+function calculateAnnual(){
+  let total=0;
+  Object.values(data.records).forEach(month=>{
+    Object.values(month).forEach(r=>{
+      total += (r.s||0)+(r.t||0);
+    });
+  });
+  return total;
+}
+
+function updateFuyouStatus(){
+  const total=calculateAnnual();
+  const el=document.getElementById("fuyouStatus");
+  const note=document.getElementById("fuyouNote");
+
+  if(total<=1030000){
+    el.className="safe";
+    el.textContent="🟢 SAFE";
+    note.textContent="扶養内（年収 103万円以内）";
+  }else if(total<=1300000){
+    el.className="warn";
+    el.textContent="🟡 WARNING";
+    note.textContent="税扶養から外れる可能性あり";
+  }else{
+    el.className="dangerText";
+    el.textContent="🔴 DANGER";
+    note.textContent="税・社会保険 扶養外";
+  }
+}
+
+/* -------- Render -------- */
 function render(){
   renderOffices();
   renderMonths();
+  updateFuyouStatus();
 }
 
 render();
 
+/* -------- Service Worker -------- */
 if("serviceWorker" in navigator){
   navigator.serviceWorker.register("sw.js");
 }
