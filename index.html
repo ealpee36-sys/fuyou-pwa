@@ -15,25 +15,30 @@
   --card:#fff;
   --text:#1f2937;
   --muted:#6b7280;
+  --safe:#16a34a;
   --danger:#dc2626;
 }
+
 body{
   margin:0;
   font-family:system-ui;
   background:var(--bg);
   color:var(--text);
 }
+
 header{
   background:var(--primary);
   color:#fff;
   padding:1rem;
   text-align:center;
 }
+
 .container{
   max-width:1000px;
   margin:auto;
   padding:1rem;
 }
+
 .card{
   background:var(--card);
   border-radius:12px;
@@ -41,7 +46,9 @@ header{
   margin-bottom:1rem;
   box-shadow:0 4px 10px rgba(0,0,0,.05);
 }
+
 h3{margin-top:0}
+
 button{
   background:var(--primary);
   color:#fff;
@@ -50,34 +57,45 @@ button{
   border-radius:6px;
   cursor:pointer;
 }
+
 button.danger{background:var(--danger)}
+
 input{
   padding:.4rem;
   border-radius:6px;
   border:1px solid #ccc;
   width:90px;
 }
+
 .office-row{
   display:flex;
   gap:.4rem;
   align-items:center;
   margin-bottom:.4rem;
 }
+
 .month-grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
   gap:1rem;
 }
-.safe{color:#16a34a;font-weight:bold}
-.warn{color:#ca8a04;font-weight:bold}
-.danger-text{color:#dc2626;font-weight:bold}
+
+.status{
+  font-weight:bold;
+  padding:.4rem .6rem;
+  border-radius:6px;
+  display:inline-block;
+}
+
+.safe{background:#dcfce7;color:var(--safe)}
+.danger-status{background:#fee2e2;color:var(--danger)}
+
 footer{
   text-align:center;
   font-size:.8rem;
   color:var(--muted);
   margin:2rem 0;
 }
-.summary p{margin:.3rem 0}
 </style>
 </head>
 
@@ -91,24 +109,26 @@ footer{
 <div class="container">
 
 <!-- SUMMARY -->
-<div class="card summary">
+<div class="card">
   <h3>📌 Summary</h3>
   <p>Total Salary: ¥<span id="totalSalary">0</span></p>
   <p>Total Transport: ¥<span id="totalTransport">0</span></p>
-  <p><strong>Total Income:</strong> ¥<span id="totalIncome">0</span></p>
-  <p>Resident Tax (目安): ¥<span id="residentTax">0</span></p>
-  <p id="fuyouStatus"></p>
-  <small id="fuyouNote"></small>
+  <p><strong>Total Income: ¥<span id="totalIncome">0</span></strong></p>
+  <hr>
+  <p>Salary Income Deduction: ¥550,000</p>
+  <p>Resident Tax Basic Deduction: ¥430,000</p>
+  <p><strong>Resident Tax (目安): ¥<span id="residentTax">0</span></strong></p>
+  <p id="fuyouStatus" class="status"></p>
 </div>
 
-<!-- OFFICE -->
+<!-- OFFICES -->
 <div class="card">
   <h3>🏢 Offices</h3>
   <div id="officeList"></div>
   <button onclick="addOffice()">➕ Add Office</button>
 </div>
 
-<!-- MONTHS -->
+<!-- MONTH INPUT -->
 <div class="month-grid" id="months"></div>
 
 </div>
@@ -182,49 +202,44 @@ function renderMonths(){
 function update(m,o,k,v){
   data.records[m][o]=data.records[m][o]||{s:0,t:0};
   data.records[m][o][k]=Number(v||0);
-  save();
-  updateSummary();
+  save(); calculate();
 }
 
-function updateSummary(){
+function calculate(){
   let salary=0, transport=0;
-  Object.values(data.records).forEach(month=>{
-    Object.values(month).forEach(r=>{
-      salary+=r.s||0;
-      transport+=r.t||0;
+
+  months.forEach(m=>{
+    Object.values(data.records[m]||{}).forEach(r=>{
+      salary+=r.s;
+      transport+=r.t;
     });
   });
 
-  const total=salary+transport;
-  const residentTax=Math.max(0,Math.round(total*0.1)); // approx 10%
+  const totalIncome=salary+transport;
+
+  // Resident tax calculation (correct logic)
+  let taxable=Math.max(0, salary-550000-430000);
+  let residentTax=Math.round(taxable*0.10);
 
   document.getElementById("totalSalary").textContent=salary.toLocaleString();
   document.getElementById("totalTransport").textContent=transport.toLocaleString();
-  document.getElementById("totalIncome").textContent=total.toLocaleString();
+  document.getElementById("totalIncome").textContent=totalIncome.toLocaleString();
   document.getElementById("residentTax").textContent=residentTax.toLocaleString();
 
-  const status=document.getElementById("fuyouStatus");
-  const note=document.getElementById("fuyouNote");
-
-  if(total<=1030000){
-    status.className="safe";
-    status.textContent="🟢 扶養 SAFE";
-    note.textContent="103万円以内";
-  }else if(total<=1300000){
-    status.className="warn";
-    status.textContent="🟡 扶養 WARNING";
-    note.textContent="税扶養から外れる可能性あり";
+  const statusEl=document.getElementById("fuyouStatus");
+  if(salary<=1030000){
+    statusEl.textContent="🟢 扶養 SAFE（103万円以内）";
+    statusEl.className="status safe";
   }else{
-    status.className="danger-text";
-    status.textContent="🔴 扶養 DANGER";
-    note.textContent="税・社会保険 扶養外";
+    statusEl.textContent="🔴 扶養 DANGER（103万円超）";
+    statusEl.className="status danger-status";
   }
 }
 
 function render(){
   renderOffices();
   renderMonths();
-  updateSummary();
+  calculate();
 }
 
 render();
